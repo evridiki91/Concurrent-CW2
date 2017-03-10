@@ -1,6 +1,8 @@
 #include "hilevel.h"
 
+#define TOTALP 15
 pcb_t pcb[15], *current = NULL;
+
 
 //From W3
 extern void     main_P3();
@@ -16,20 +18,34 @@ startOfStack = &tos_P3;
 
 
 pid_t newPid( ){
-  for(int i = 0; i < 15; i++ ){
-    if (pcb[i].available == 1)
-    return i;
+  for(int i = 0; i < TOTALP; i++ ){
+    if (pcb[i].available == 1){
+      pcb[i].available = 0;    //make it unavailable
+      return i;
+    }
+
   }
   return -1;
 }
 
+pid_t nextAvailable( ){
+  pid_t next;
+  for(int i = 0; i < TOTALP; i++ ){
+    if (pcb[( (i + (current->pid) + 1) % TOTALP)].available == 0){
+      next = (i + (current->pid) + 1) % TOTALP;
+      return next;
+    }
+  }
+  //return error
+}
+
 //Added from worksheet3
-
+//TODO : giati en toso argo, pezi rolo to scheduler ?
 void scheduler( ctx_t* ctx ) {
-
+    pid_t new = nextAvailable();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[current->pid + 1].ctx, sizeof( ctx_t ) );
-    current = &pcb[ current->pid + 1 ];
+    memcpy( ctx, &pcb[ new].ctx, sizeof( ctx_t ) );
+    current = &pcb[ new ];
 
   return;
 }
@@ -69,9 +85,10 @@ void hilevel_handler_rst( ctx_t* ctx) {
      * - the PC and SP values matche the entry point and top of stack.
      */
      //TODO: iS IT CORRECT
-    for (int i = 0; i < 15; i++){
+    for (int i = 0; i < TOTALP; i++){
       pcb[i].available = 1;
     }
+
     memset( &pcb[ 0 ], 0, sizeof( pcb_t ) );
     pcb[ 0 ].pid       = 0;
     pcb[ 0 ].ctx.cpsr  = 0x50;
@@ -98,12 +115,12 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 2 ].tos   = ( uint32_t )( &tos_P5  );
 
     memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
-    pcb[ 2 ].pid      = 2;
-    pcb[ 2 ].ctx.cpsr = 0x50;
-    pcb[ 2 ].ctx.pc   = ( uint32_t )( &main_console );
-    pcb[ 2 ].ctx.sp   = ( uint32_t )( &tos_console  );
-    pcb[ 2 ].available = 0;
-    pcb[ 2 ].tos   = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].pid      = 3;
+    pcb[ 3 ].ctx.cpsr = 0x50;
+    pcb[ 3 ].ctx.pc   = ( uint32_t )( &main_console );
+    pcb[ 3 ].ctx.sp   = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].available = 0;
+    pcb[ 3 ].tos   = ( uint32_t )( &tos_console  );
 
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
 
@@ -159,7 +176,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
       case 0x03 : { // 0x03 => fork( )
         pid_t newId = newPid();
-        int offset;
+        uint32_t offset;
 
         if(newId != -1){ //If fork has succesfully returned a child
           //memset?
