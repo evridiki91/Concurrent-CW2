@@ -60,7 +60,7 @@ int write( int fd, const void* x, size_t n ) {
   asm volatile( "mov r0, %2 \n" // assign r0 = fd
                 "mov r1, %3 \n" // assign r1 =  x
                 "mov r2, %4 \n" // assign r2 =  n
-                "svc %1     \n" // make system call SYS_WRITE
+                "svc #1     \n" // make system call SYS_WRITE
                 "mov %0, r0 \n" // assign r  = r0
               : "=r" (r)
               : "I" (SYS_WRITE), "r" (fd), "r" (x), "r" (n)
@@ -75,7 +75,7 @@ int  read( int fd,       void* x, size_t n ) {
   asm volatile( "mov r0, %2 \n" // assign r0 = fd
                 "mov r1, %3 \n" // assign r1 =  x
                 "mov r2, %4 \n" // assign r2 =  n
-                "svc %2     \n" // make system call SYS_READ
+                "svc #2     \n" // make system call SYS_READ
                 "mov %0, r0 \n" // assign r  = r0
               : "=r" (r)
               : "I" (SYS_READ),  "r" (fd), "r" (x), "r" (n)
@@ -87,8 +87,8 @@ int  read( int fd,       void* x, size_t n ) {
 int fork() {
   int r;
 
-  asm volatile( "svc %3     \n" // make system call SYS_FORK
-                "mov %0, r0 \n" // assign r  = r0 
+  asm volatile( "svc #3     \n" // make system call SYS_FORK
+                "mov %0, r0 \n" // assign r  = r0    ,% is for arguments
               : "=r" (r)
               : "I" (SYS_FORK)
               : "r0" );
@@ -98,7 +98,7 @@ int fork() {
 
 void exit( int x ) {
   asm volatile( "mov r0, %1 \n" // assign r0 =  x
-                "svc %4     \n" // make system call SYS_EXIT
+                "svc #4     \n" // make system call SYS_EXIT
               :
               : "I" (SYS_EXIT), "r" (x)
               : "r0" );
@@ -108,7 +108,7 @@ void exit( int x ) {
 
 void exec( const void* x ) {
   asm volatile( "mov r0, %1 \n" // assign r0 = x
-                "svc %5     \n" // make system call SYS_EXEC
+                "svc #5     \n" // make system call SYS_EXEC
               :
               : "I" (SYS_EXEC), "r" (x)
               : "r0" );

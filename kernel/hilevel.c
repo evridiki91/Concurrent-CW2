@@ -1,40 +1,6 @@
 #include "hilevel.h"
 
-int totalp = 15;
-pcb_t pcb[totalp], *current = NULL;
-
-
-pid_t newPid( ){
-  for(int i = 0; i < totalp; i++ ){
-    if (pcb[i].available == 1)
-    return i;
-  }
-  return -1;
-}
-
-//Added from worksheet3
-//What happens when P3 terminates?(1)
-void scheduler( ctx_t* ctx ) {
-
-  if      ( current == &pcb[ 0 ] ) {
-    memcpy( &pcb[ 0 ].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[ 1 ].ctx, sizeof( ctx_t ) );
-    current = &pcb[ 1 ];
-  }
-  else if ( current == &pcb[ 1 ] ) {
-    memcpy( &pcb[ 1 ].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[ 2 ].ctx, sizeof( ctx_t ) );
-    current = &pcb[ 2 ];
-  }
-
-  else if (current == &pcb[ 2 ] ) {
-    memcpy( &pcb[ 2 ].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[ 0 ].ctx, sizeof( ctx_t ) );
-    current = &pcb[ 0 ];
-  }
-
-  return;
-}
+pcb_t pcb[15], *current = NULL;
 
 //From W3
 extern void     main_P3();
@@ -43,6 +9,32 @@ extern void     main_P4();
 extern uint32_t tos_P4;
 extern void     main_P5();
 extern uint32_t tos_P5;
+extern void     main_console();
+extern uint32_t tos_console;
+
+startOfStack = &tos_P3;
+
+
+pid_t newPid( ){
+  for(int i = 0; i < 15; i++ ){
+    if (pcb[i].available == 1)
+    return i;
+  }
+  return -1;
+}
+
+//Added from worksheet3
+
+void scheduler( ctx_t* ctx ) {
+
+    memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
+    memcpy( ctx, &pcb[current->pid + 1].ctx, sizeof( ctx_t ) );
+    current = &pcb[ current->pid + 1 ];
+
+  return;
+}
+
+
 
 
 //From W3
@@ -86,7 +78,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 0 ].ctx.pc    = ( uint32_t )( &main_P3 );
     pcb[ 0 ].ctx.sp    = ( uint32_t )( &tos_P3  );
     pcb[ 0 ].available = 0;
-    pcb[ 0 ].ctx.tos   = ( uint32_t )( &tos_P3  );
+    pcb[ 0 ].tos   = ( uint32_t )( &tos_P3  );
 
 
     memset( &pcb[ 1 ], 0, sizeof( pcb_t ) );
@@ -95,7 +87,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 1 ].ctx.pc   = ( uint32_t )( &main_P4 );
     pcb[ 1 ].ctx.sp   = ( uint32_t )( &tos_P4 );
     pcb[ 1 ].available = 0;
-    pcb[ 1 ].ctx.tos   = ( uint32_t )( &tos_P4  );
+    pcb[ 1 ].tos   = ( uint32_t )( &tos_P4  );
 
     memset( &pcb[ 2 ], 0, sizeof( pcb_t ) );
     pcb[ 2 ].pid      = 2;
@@ -103,7 +95,15 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 2 ].ctx.pc   = ( uint32_t )( &main_P5 );
     pcb[ 2 ].ctx.sp   = ( uint32_t )( &tos_P5  );
     pcb[ 2 ].available = 0;
-    pcb[ 2 ].ctx.tos   = ( uint32_t )( &tos_P5  );
+    pcb[ 2 ].tos   = ( uint32_t )( &tos_P5  );
+
+    memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
+    pcb[ 2 ].pid      = 2;
+    pcb[ 2 ].ctx.cpsr = 0x50;
+    pcb[ 2 ].ctx.pc   = ( uint32_t )( &main_console );
+    pcb[ 2 ].ctx.sp   = ( uint32_t )( &tos_console  );
+    pcb[ 2 ].available = 0;
+    pcb[ 2 ].tos   = ( uint32_t )( &tos_console  );
 
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
 
@@ -159,15 +159,29 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
       case 0x03 : { // 0x03 => fork( )
         pid_t newId = newPid();
-        if(newId != -1){
-          pcb[newId].pid = newId;
+        int offset;
+
+        if(newId != -1){ //If fork has succesfully returned a child
+          //memset?
+
+          uint32_t newId_sp, newId_tos ;
+
           memcpy( &pcb[newId], current->ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
+          offset    = (ctx->sp) - (pcb[current->pid].tos);
+          newId_tos = startOfStack + newId * 0x00001000;  //find the new top of the stack for newId
+          newId_sp  = pcb[newId].tos + offset;
+
+          memcpy( newId_tos, pcb[current->pid].tos, offset);       //Location on the stack for the child same size as the parent
+          pcb[newId].pid = newId;  //The pid of the new process will be the newId
+
       }
-      else
+      //else //return error message if the fork wasn't successful
 
         // new process with new pcb
         //
-        ctx->gpr[ 0 ] = pid;
+        ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
+        pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
+        break;
       }
 
       case 0x04 : { // 0x04 => exit( int x )

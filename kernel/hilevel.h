@@ -22,13 +22,14 @@
 typedef int pid_t;
 
 typedef struct {
-  uint32_t cpsr, pc, gpr[ 13 ], sp, lr, tos;
+  uint32_t cpsr, pc, gpr[ 13 ], sp, lr;
 } ctx_t;
 
 typedef struct {
   pid_t pid;
   ctx_t ctx;
   int available;
+  uint32_t tos;
 } pcb_t;
 
 #endif
