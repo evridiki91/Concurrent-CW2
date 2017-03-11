@@ -44,8 +44,8 @@ pid_t nextAvailable( ){
 void scheduler( ctx_t* ctx ) {
     pid_t new = nextAvailable();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[ new].ctx, sizeof( ctx_t ) );
-    current = &pcb[ new ];
+    memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
+    current = &pcb[new];
 
   return;
 }
@@ -203,12 +203,13 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
       case 0x04 : { // 0x04 => exit( int x )
         int    x  =  ( int  )( ctx->gpr[ 0 ] );
-
-
+        pcb[current->pid].available = 1;
+        scheduler(ctx);
       }
 
       case 0x05 : { // 0x05 =>  exec( const void* x )
         char*  x  = ( char* )( ctx->gpr[ 0 ] );
+        ctx->pc    = x; //The program counter must be updated to the address x.
       }
 
       default   : { // 0x?? => unknown/unsupported
