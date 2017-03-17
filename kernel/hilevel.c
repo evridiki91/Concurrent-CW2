@@ -224,19 +224,19 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
       case 0x03 : { // 0x03 => fork( )
         pid_t newId = newPid();
-          PL011_putc( UART0, 'a', true );
         uint32_t offset;
+        PL011_putc( UART0, 'a', true );
 
-        if(newId > -1){
+      //  if(newId > -1){
           //memset?
+          memset( pcb[ newId ], 0, sizeof( pcb_t ) );
 
-          memcpy( &pcb[newId], current->ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
+          memcpy( &pcb[newId].ctx, ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
           offset    = (pcb[current->pid].tos) - (ctx->sp) ;
           pcb[newId].tos = startOfStack + (newId * 0x00001000);  //finds the new top of the stack for newId
           pcb[newId].ctx.sp  = pcb[newId].tos - offset;
           PL011_putc( UART0,'b' , true );
 
-          memcpy( &pcb[newId].ctx.sp, pcb[current->pid].ctx.sp, offset);  //Location on the stack for the child same size as the parent
           pcb[newId].pid = newId;  //The pid of the new process will be the newId
           pcb[newId].available = 0;
           pcb[newId].priority = pcb[current->pid].priority; //Same priority as the parent
@@ -246,7 +246,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
           ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
           pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
           PL011_putc( UART0, 'c', true );
-      }
+      //}
       //else //return error message if the fork wasn't successful
 
         // new process with new pcb
@@ -269,9 +269,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         ctx->pc    = (uint32_t)(x); //The program counter must be updated to the address x.
         ctx->sp    = pcb[current->pid].tos;
         ctx->cpsr  = 0x50;
-        for(int i = 0; i < 13; i++){
+      /*  for(int i = 0; i < 13; i++){
           ctx->gpr[i] = 0;
-        }
+        }*/
         break;
       }
 
