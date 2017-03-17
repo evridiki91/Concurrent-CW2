@@ -29,6 +29,9 @@ typedef struct {
   pid_t pid;
   ctx_t ctx;
   int available;
+  int state;
+  int priority;
+  int age;
   uint32_t tos;
 } pcb_t;
 

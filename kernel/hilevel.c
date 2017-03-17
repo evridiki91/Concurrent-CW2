@@ -39,9 +39,43 @@ pid_t nextAvailable( ){
   //return error
 }
 
-//Added from worksheet3
-//TODO : giati en toso argo, pezi rolo to scheduler ?
+pid_t maxPriority(){
+  int max = 0;
+  pid_t nextId;
+  for(int i = 0; i < TOTALP; i++){
+    if ( (pcb[i].priority) > max){
+      max = pcb[i].priority;
+      nextId  = pcb[i].pid;
+    }
+    else {
+      if ( (pcb[i].priority) == max){
+        if ( (pcb[i].age) > (pcb[nextId].age) )
+          max = pcb[i].priority;
+          nextId = pcb[i].pid;
+      }
+    }
+  }
+  return nextId;
+}
+
+
+
 void scheduler( ctx_t* ctx ) {
+    pid_t new = maxPriority();
+    memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
+    memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
+    current = &pcb[new];
+    for (int i = 0; i < TOTALP; i++){
+      if(i != (current->pid))
+      pcb[i].priority ++;
+      pcb[i].age ++;
+    }
+  return;
+}
+
+
+
+/*void scheduler( ctx_t* ctx ) {
     pid_t new = nextAvailable();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
     memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
@@ -49,7 +83,7 @@ void scheduler( ctx_t* ctx ) {
 
   return;
 }
-
+*/
 
 
 
@@ -95,34 +129,47 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 0 ].ctx.pc    = ( uint32_t )( &main_P3 );
     pcb[ 0 ].ctx.sp    = ( uint32_t )( &tos_P3  );
     pcb[ 0 ].available = 0;
-    pcb[ 0 ].tos   = ( uint32_t )( &tos_P3  );
+    pcb[ 0 ].tos       = ( uint32_t )( &tos_P3  );
+    pcb[ 0 ].priority  = 4;
+    pcb[ 0 ].state     = 1;
+    pcb[ 0 ].age       = 0;
 
 
     memset( &pcb[ 1 ], 0, sizeof( pcb_t ) );
-    pcb[ 1 ].pid      = 1;
-    pcb[ 1 ].ctx.cpsr = 0x50;
-    pcb[ 1 ].ctx.pc   = ( uint32_t )( &main_P4 );
-    pcb[ 1 ].ctx.sp   = ( uint32_t )( &tos_P4 );
+    pcb[ 1 ].pid       = 1;
+    pcb[ 1 ].ctx.cpsr  = 0x50;
+    pcb[ 1 ].ctx.pc    = ( uint32_t )( &main_P4 );
+    pcb[ 1 ].ctx.sp    = ( uint32_t )( &tos_P4 );
     pcb[ 1 ].available = 0;
-    pcb[ 1 ].tos   = ( uint32_t )( &tos_P4  );
+    pcb[ 1 ].tos       = ( uint32_t )( &tos_P4  );
+    pcb[ 1 ].priority  = 3;
+    pcb[ 1 ].state     = 1;
+    pcb[ 1 ].age       = 0;
 
     memset( &pcb[ 2 ], 0, sizeof( pcb_t ) );
-    pcb[ 2 ].pid      = 2;
-    pcb[ 2 ].ctx.cpsr = 0x50;
-    pcb[ 2 ].ctx.pc   = ( uint32_t )( &main_P5 );
-    pcb[ 2 ].ctx.sp   = ( uint32_t )( &tos_P5  );
+    pcb[ 2 ].pid       = 2;
+    pcb[ 2 ].ctx.cpsr  = 0x50;
+    pcb[ 2 ].ctx.pc    = ( uint32_t )( &main_P5 );
+    pcb[ 2 ].ctx.sp    = ( uint32_t )( &tos_P5  );
     pcb[ 2 ].available = 0;
-    pcb[ 2 ].tos   = ( uint32_t )( &tos_P5  );
+    pcb[ 2 ].tos       = ( uint32_t )( &tos_P5  );
+    pcb[ 2 ].priority  = 1;
+    pcb[ 2 ].state     = 1;
+    pcb[ 2 ].age       = 0;
 
     memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
-    pcb[ 3 ].pid      = 3;
-    pcb[ 3 ].ctx.cpsr = 0x50;
-    pcb[ 3 ].ctx.pc   = ( uint32_t )( &main_console );
-    pcb[ 3 ].ctx.sp   = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].pid       = 3;
+    pcb[ 3 ].ctx.cpsr  = 0x50;
+    pcb[ 3 ].ctx.pc    = ( uint32_t )( &main_console );
+    pcb[ 3 ].ctx.sp    = ( uint32_t )( &tos_console  );
     pcb[ 3 ].available = 0;
-    pcb[ 3 ].tos   = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].tos       = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].priority  = 2;
+    pcb[ 3 ].state     = 1;
+    pcb[ 3 ].age       = 0;
 
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
+pcb[current->pid].state = 0; //running state
 
   return;
 }
@@ -136,6 +183,7 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
   if( id == GIC_SOURCE_TIMER0 ) {
     scheduler(ctx);
+
     TIMER0->Timer1IntClr = 0x01;
   }
 
@@ -185,31 +233,38 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
           memcpy( &pcb[newId], current->ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
           offset    = (ctx->sp) - (pcb[current->pid].tos);
-          newId_tos = startOfStack + newId * 0x00001000;  //find the new top of the stack for newId
+          newId_tos = startOfStack + newId * 0x00001000;  //finds the new top of the stack for newId
           newId_sp  = pcb[newId].tos + offset;
 
-          memcpy( newId_tos, pcb[current->pid].tos, offset);       //Location on the stack for the child same size as the parent
+          memcpy( newId_tos, pcb[current->pid].tos, offset);  //Location on the stack for the child same size as the parent
           pcb[newId].pid = newId;  //The pid of the new process will be the newId
+          pcb[newId].priority = pcb[current->pid].priority; //Same priority as the parent
+          pcb[newId].state = 1; //ready state
+          pcb[newId].age = 0;  //Set the child's age to 0;
 
+          ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
+          pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
       }
       //else //return error message if the fork wasn't successful
 
         // new process with new pcb
         //
-        ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
-        pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
+
         break;
       }
 
       case 0x04 : { // 0x04 => exit( int x )
         int    x  =  ( int  )( ctx->gpr[ 0 ] );
         pcb[current->pid].available = 1;
+        pcb[current->pid].state = -1; //dead state
+        pcb[current->pid].age = 0;
         scheduler(ctx);
       }
 
       case 0x05 : { // 0x05 =>  exec( const void* x )
         char*  x  = ( char* )( ctx->gpr[ 0 ] );
         ctx->pc    = x; //The program counter must be updated to the address x.
+        ctx->sp    = pcb[current->pid].tos;  //TODO ASK LAB ASSISTANT
       }
 
       default   : { // 0x?? => unknown/unsupported
