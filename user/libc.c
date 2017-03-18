@@ -46,7 +46,7 @@ void itoa( char* r, int x ) {
 }
 
 void yield() {
-  asm volatile( "svc %0     \n" // make system call SYS_YIELD
+  asm volatile( "svc #0     \n" // make system call SYS_YIELD
               :
               : "I" (SYS_YIELD)
               : );

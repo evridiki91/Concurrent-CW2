@@ -1,7 +1,7 @@
 #include "hilevel.h"
 
 #define TOTALP 15
-pcb_t pcb[15], *current = NULL;
+pcb_t pcb[TOTALP], *current = NULL;
 
 
 //From W3
@@ -14,7 +14,7 @@ extern uint32_t tos_P5;
 extern void     main_console();
 extern uint32_t tos_console;
 
-startOfStack = &tos_P3;
+startOfStack = &tos_console;
 
 
 pid_t newPid( ){
@@ -23,67 +23,64 @@ pid_t newPid( ){
       pcb[i].available = 0;    //make it unavailable
       return i;
     }
-
   }
   return -1;
 }
 
-pid_t nextAvailable( ){
-  pid_t next;
+//next process to be run
+pid_t nextProcess( ){
   for(int i = 0; i < TOTALP; i++ ){
     if (pcb[( (i + (current->pid) + 1) % TOTALP)].available == 0){
-      next = (i + (current->pid) + 1) % TOTALP;
-      return next;
+      return (i + (current->pid) + 1) % TOTALP;
     }
   }
   //return error
 }
 
 pid_t maxPriority(){
-  int max = 0;
+  int max = -1;
   pid_t nextId;
   for(int i = 0; i < TOTALP; i++){
     if ( (pcb[i].priority) > max){
       max = pcb[i].priority;
-      nextId  = pcb[i].pid;
+      nextId  = i;
     }
-    else {
-      if ( (pcb[i].priority) == max){
-        if ( (pcb[i].age) > (pcb[nextId].age) )
+    else if ( (pcb[i].priority) == max){
+        if ( (pcb[i].age) > (pcb[nextId].age) ){
           max = pcb[i].priority;
-          nextId = pcb[i].pid;
+          nextId = i;
+        }
       }
     }
-  }
   return nextId;
 }
 
 
-/*
+
 void scheduler( ctx_t* ctx ) {
     pid_t new = maxPriority();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
     memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
     current = &pcb[new];
     for (int i = 0; i < TOTALP; i++){
-      if(i != (current->pid))
-      pcb[i].priority ++;
-      pcb[i].age ++;
+      if(i != (current->pid) && (pcb[i].available == 0)){
+        pcb[i].priority ++;
+        pcb[i].age ++;
+      }
     }
   return;
 }
-*/
 
 
+/*
 void scheduler( ctx_t* ctx ) {
-    pid_t new = nextAvailable();
+    pid_t new = nextProcess();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
     memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
     current = &pcb[new];
-
   return;
 }
-
+*/
 
 
 
@@ -123,53 +120,56 @@ void hilevel_handler_rst( ctx_t* ctx) {
       pcb[i].available = 1;
     }
 
-    memset( &pcb[ 0 ], 0, sizeof( pcb_t ) );
+
+    memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
     pcb[ 0 ].pid       = 0;
     pcb[ 0 ].ctx.cpsr  = 0x50;
-    pcb[ 0 ].ctx.pc    = ( uint32_t )( &main_P3 );
-    pcb[ 0 ].ctx.sp    = ( uint32_t )( &tos_P3  );
+    pcb[ 0 ].ctx.pc    = ( uint32_t )( &main_console );
+    pcb[ 0 ].ctx.sp    = ( uint32_t )( &tos_console  );
     pcb[ 0 ].available = 0;
-    pcb[ 0 ].tos       = ( uint32_t )( &tos_P3  );
-    pcb[ 0 ].priority  = 4;
-    pcb[ 0 ].state     = 1;
+    pcb[ 0 ].tos       = ( uint32_t )( &tos_console  );
+    pcb[ 0 ].priority  = 2;
     pcb[ 0 ].age       = 0;
 
 
     memset( &pcb[ 1 ], 0, sizeof( pcb_t ) );
     pcb[ 1 ].pid       = 1;
     pcb[ 1 ].ctx.cpsr  = 0x50;
-    pcb[ 1 ].ctx.pc    = ( uint32_t )( &main_P4 );
-    pcb[ 1 ].ctx.sp    = ( uint32_t )( &tos_P4 );
+    pcb[ 1 ].ctx.pc    = ( uint32_t )( &main_P3 );
+    pcb[ 1 ].ctx.sp    = ( uint32_t )( &tos_P3  );
     pcb[ 1 ].available = 0;
-    pcb[ 1 ].tos       = ( uint32_t )( &tos_P4  );
-    pcb[ 1 ].priority  = 3;
-    pcb[ 1 ].state     = 1;
+    pcb[ 1 ].tos       = ( uint32_t )( &tos_P3  );
+    pcb[ 1 ].priority  = 20;
     pcb[ 1 ].age       = 0;
+
+
 
     memset( &pcb[ 2 ], 0, sizeof( pcb_t ) );
     pcb[ 2 ].pid       = 2;
     pcb[ 2 ].ctx.cpsr  = 0x50;
-    pcb[ 2 ].ctx.pc    = ( uint32_t )( &main_P5 );
-    pcb[ 2 ].ctx.sp    = ( uint32_t )( &tos_P5  );
+    pcb[ 2 ].ctx.pc    = ( uint32_t )( &main_P4 );
+    pcb[ 2 ].ctx.sp    = ( uint32_t )( &tos_P4 );
     pcb[ 2 ].available = 0;
-    pcb[ 2 ].tos       = ( uint32_t )( &tos_P5  );
-    pcb[ 2 ].priority  = 1;
-    pcb[ 2 ].state     = 1;
+    pcb[ 2 ].tos       = ( uint32_t )( &tos_P4  );
+    pcb[ 2 ].priority  = 3;
     pcb[ 2 ].age       = 0;
+
+
 
     memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
     pcb[ 3 ].pid       = 3;
     pcb[ 3 ].ctx.cpsr  = 0x50;
-    pcb[ 3 ].ctx.pc    = ( uint32_t )( &main_console );
-    pcb[ 3 ].ctx.sp    = ( uint32_t )( &tos_console  );
+    pcb[ 3 ].ctx.pc    = ( uint32_t )( &main_P5 );
+    pcb[ 3 ].ctx.sp    = ( uint32_t )( &tos_P5  );
     pcb[ 3 ].available = 0;
-    pcb[ 3 ].tos       = ( uint32_t )( &tos_console  );
-    pcb[ 3 ].priority  = 2;
-    pcb[ 3 ].state     = 1;
+    pcb[ 3 ].tos       = ( uint32_t )( &tos_P5  );
+    pcb[ 3 ].priority  = 1;
     pcb[ 3 ].age       = 0;
 
+
+
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
-pcb[current->pid].state = 0; //running state
+
 
   return;
 }
@@ -209,6 +209,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         scheduler( ctx );
         break;
       }*/
+
       case 0x01 : { // 0x01 => write( fd, x, n )
         int   fd = ( int   )( ctx->gpr[ 0 ] );
         char*  x = ( char* )( ctx->gpr[ 1 ] );
@@ -227,9 +228,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         uint32_t offset;
         PL011_putc( UART0, 'a', true );
 
-      //  if(newId > -1){
+        if(newId != -1){
           //memset?
-          memset( pcb[ newId ], 0, sizeof( pcb_t ) );
+          memset( &pcb[ newId ], 0, sizeof( pcb_t ) );
 
           memcpy( &pcb[newId].ctx, ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
           offset    = (pcb[current->pid].tos) - (ctx->sp) ;
@@ -240,13 +241,13 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
           pcb[newId].pid = newId;  //The pid of the new process will be the newId
           pcb[newId].available = 0;
           pcb[newId].priority = pcb[current->pid].priority; //Same priority as the parent
-          pcb[newId].state = 1; //ready state
           pcb[newId].age = 0;  //Set the child's age to 0;
+
 
           ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
           pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
           PL011_putc( UART0, 'c', true );
-      //}
+      }
       //else //return error message if the fork wasn't successful
 
         // new process with new pcb
@@ -258,8 +259,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       case 0x04 : { // 0x04 => exit( int x )
         int    x  =  ( int  )( ctx->gpr[ 0 ] );
         pcb[current->pid].available = 1;
-        pcb[current->pid].state = -1; //dead state
         pcb[current->pid].age = 0;
+        pcb[current->pid].priority = 0;
         scheduler(ctx);
         break;
       }
