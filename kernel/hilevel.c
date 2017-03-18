@@ -63,7 +63,7 @@ void scheduler( ctx_t* ctx ) {
     memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
     current = &pcb[new];
     for (int i = 0; i < TOTALP; i++){
-      if(i != (current->pid) && (pcb[i].available == 0)){
+      if(i != (current->pid) && (pcb[i].available == 0)){ //Solves starvation
         pcb[i].priority ++;
         pcb[i].age ++;
       }
@@ -248,7 +248,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
           pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
           PL011_putc( UART0, 'c', true );
       }
-      //else //return error message if the fork wasn't successful
+    //else write( STDOUT_FILENO, "Fork failed", 11);
+//return error message if the fork wasn't successful
 
         // new process with new pcb
         //
@@ -268,11 +269,21 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       case 0x05 : { // 0x05 =>  exec( const void* x )
         void*  x   = ( void* )( ctx->gpr[ 0 ] );
         ctx->pc    = (uint32_t)(x); //The program counter must be updated to the address x.
-        ctx->sp    = pcb[current->pid].tos;
+        ctx->sp    = pcb[current->pid].tos; //we don't want to use the stuff in the sp so we set the sp to the tos
         ctx->cpsr  = 0x50;
       /*  for(int i = 0; i < 13; i++){
           ctx->gpr[i] = 0;
         }*/
+        break;
+      }
+
+      case 0x06 : { //0x06 => int kill( int pid, int x )
+        int pid    = ( int )( ctx->gpr[ 0 ] );
+        int x      = ( int )( ctx->gpr[ 1 ] );
+        pcb[pid].available = 1;
+        pcb[pid].age = 0;
+        pcb[pid].priority = 0;
+        scheduler(ctx); //TODO: if i remove this will the timer change the process to the next one
         break;
       }
 
