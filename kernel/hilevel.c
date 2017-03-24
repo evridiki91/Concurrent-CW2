@@ -1,10 +1,12 @@
 #include "hilevel.h"
 
 #define TOTALP 15
-pcb_t pcb[TOTALP], *current = NULL;
+#define PHILOSOPHERS 16
+#define PIPES 32
 
+pcb_t  pcb[TOTALP], *current = NULL;
+pipe_t pipe[PIPES];  //Number of pipes
 
-//From W3
 extern void     main_P3();
 extern uint32_t tos_P3;
 extern void     main_P4();
@@ -71,6 +73,32 @@ void scheduler( ctx_t* ctx ) {
   return;
 }
 
+void initialisePipes() {
+for(int i = 0; i < PIPES; i++){
+  memset( &pipe[ i ], -1, sizeof(pipe) );
+  }
+}
+
+int nextPipe(){
+  for(int i = 0; i < PIPES; i++){
+    if( pipe[i] == -1)
+      return i;
+  }
+  return -1;
+}
+
+int createPipe(int p_start, int p_end){
+  int index = nextPipe();
+  pipe[index].p_start = p_start;
+  pipe[index].p_end   = p_end;
+  return index;
+}
+
+
+
+
+
+
 
 /*
 void scheduler( ctx_t* ctx ) {
@@ -84,7 +112,7 @@ void scheduler( ctx_t* ctx ) {
 
 
 
-//From W3
+
 void hilevel_handler_rst( ctx_t* ctx) {
   /* Configure the mechanism for interrupt handling by
    *
@@ -283,10 +311,20 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         pcb[pid].available = 1;
         pcb[pid].age = 0;
         pcb[pid].priority = 0;
+        pcb[pid].ctx.gpr[0] = x;
         scheduler(ctx); //TODO: if i remove this will the timer change the process to the next one
         break;
       }
 
+      case 0x07 : { //0x07 => createp(int start, int end )
+        int start = ( int )( ctx->gpr[ 0 ] );
+        int end   = ( int )( ctx->gpr[ 1 ] );
+        int index = createPipe(start,end);
+
+
+
+
+      }
       default   : { // 0x?? => unknown/unsupported
         break;
       }

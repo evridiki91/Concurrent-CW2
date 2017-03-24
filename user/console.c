@@ -1,7 +1,7 @@
 #include "console.h"
 
 /* The following functions are special-case versions of a) writing,
- * and b) reading a string from the UART (the latter case returning 
+ * and b) reading a string from the UART (the latter case returning
  * once a carriage return character has been read, or an overall
  * limit reached).
  */
@@ -15,22 +15,22 @@ void puts( char* x, int n ) {
 void gets( char* x, int n ) {
   for( int i = 0; i < n; i++ ) {
     x[ i ] = PL011_getc( UART1, true );
-    
+
     if( x[ i ] == '\x0A' ) {
       x[ i ] = '\x00'; break;
     }
   }
 }
 
-/* Since we lack a *real* loader (as a result of lacking a storage 
+/* Since we lack a *real* loader (as a result of lacking a storage
  * medium to store program images), the following approximates one:
  * given a program name, from the set of programs statically linked
  * into the kernel image, it returns a pointer to the entry point.
  */
 
-extern void main_P3(); 
-extern void main_P4(); 
-extern void main_P5(); 
+extern void main_P3();
+extern void main_P4();
+extern void main_P5();
 
 void* load( char* x ) {
   if     ( 0 == strcmp( x, "P3" ) ) {
@@ -67,13 +67,13 @@ void main_console() {
         void* addr = load( strtok( NULL, " " ) );
         exec( addr );
       }
-    } 
+    }
     else if( 0 == strcmp( p, "kill" ) ) {
       pid_t pid = atoi( strtok( NULL, " " ) );
       int   s   = atoi( strtok( NULL, " " ) );
 
       kill( pid, s );
-    } 
+    }
     else {
       puts( "unknown command\n", 16 );
     }

@@ -43,4 +43,11 @@ typedef struct {
   enum state_t state;
 } pcb_t;
 
+typedef struct {
+  void* channel;
+  pid_t p_start;
+  pid_t p_end;
+} pipe_t;
+
+
 #endif

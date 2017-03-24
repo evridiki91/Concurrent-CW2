@@ -129,3 +129,17 @@ int kill( int pid, int x ) {
 
   return r;
 }
+
+int createp( int start, int end ){
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 = p_start
+                "mov r1, %3 \n" // assign r1 = p_end
+                "svc %1     \n" // make system call SYS_CREATEP
+                "mov %0, r0 \n" // assign r0 = r
+              : "=r" (r)
+              :"I" (SYS_CREATEP), "r" (start), "r" (end)
+              : "r0", "r1" );
+
+  return r;
+}
