@@ -9,6 +9,13 @@
 
 typedef int pid_t;
 
+enum request_t {
+  okay,
+  notokay,
+  eat,
+  finish,
+};
+
 /* The definitions below capture symbolic constants within these classes:
  *
  * 1. system call identifiers (i.e., the constant used by a system call
@@ -30,7 +37,11 @@ typedef int pid_t;
 #define SYS_EXIT      ( 0x04 )
 #define SYS_EXEC      ( 0x05 )
 #define SYS_KILL      ( 0x06 )
-#define SYS_CREATEP   ( 0x07 )
+#define SYS_CPIPE     ( 0x07 )
+#define SYS_READC     ( 0x08 )
+#define SYS_WRITEC    ( 0x09 )
+#define SYS_GETPID    ( 0xA  )
+
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -66,5 +77,15 @@ extern void exec( const void* x );
 extern int  kill( pid_t pid, int x );
 
 // creates a new pipe with one process at the start and another one at the end
-extern int createp( int start, int end);
+extern int cpipe( int start, int end);
+
+// reads a request from the channel
+extern enum request_t readc(int id);
+
+
+extern void writec(int id,enum request_t request);
+
+// returns the current philosopher process id
+extern int getpid();
+
 #endif

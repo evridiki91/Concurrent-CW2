@@ -5,14 +5,16 @@
 #define PIPES 32
 
 pcb_t  pcb[TOTALP], *current = NULL;
-pipe_t pipe[PIPES];  //Number of pipes
+pipe_t pipe[PIPES];
 
+/*
 extern void     main_P3();
 extern uint32_t tos_P3;
 extern void     main_P4();
 extern uint32_t tos_P4;
 extern void     main_P5();
 extern uint32_t tos_P5;
+*/
 extern void     main_console();
 extern uint32_t tos_console;
 
@@ -58,7 +60,7 @@ pid_t maxPriority(){
 }
 
 
-
+/*
 void scheduler( ctx_t* ctx ) {
     pid_t new = maxPriority();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
@@ -72,35 +74,31 @@ void scheduler( ctx_t* ctx ) {
     }
   return;
 }
-
+*/
 void initialisePipes() {
 for(int i = 0; i < PIPES; i++){
-  memset( &pipe[ i ], -1, sizeof(pipe) );
+  memset( &pipe[ i ], -1, sizeof(pipe_t) );
   }
 }
 
-int nextPipe(){
+
+int nextPipe( int sender, int receiver ){
+  int index = -1;
   for(int i = 0; i < PIPES; i++){
-    if( pipe[i] == -1)
-      return i;
+    if( (pipe[i].sender == -1) && (pipe[i].receiver == -1)) index = i;
   }
-  return -1;
+
+  if (index != -1){
+  pipe[index].sender    = sender;
+  pipe[index].receiver  = receiver;
+  }
+
+return index;
+
 }
 
-int createPipe(int p_start, int p_end){
-  int index = nextPipe();
-  pipe[index].p_start = p_start;
-  pipe[index].p_end   = p_end;
-  return index;
-}
 
 
-
-
-
-
-
-/*
 void scheduler( ctx_t* ctx ) {
     pid_t new = nextProcess();
     memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
@@ -108,7 +106,7 @@ void scheduler( ctx_t* ctx ) {
     current = &pcb[new];
   return;
 }
-*/
+
 
 
 
@@ -123,7 +121,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
    * - enabling IRQ interrupts.
    */
 
-  TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
+  TIMER0->Timer1Load  = 0x00200000; // select period = 2^20 ticks ~= 1 sec
   TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
   TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
   TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
@@ -149,7 +147,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
     }
 
 
-    memset( &pcb[ 3 ], 0, sizeof( pcb_t ) );
+    memset( &pcb[ 0 ], 0, sizeof( pcb_t ) );
     pcb[ 0 ].pid       = 0;
     pcb[ 0 ].ctx.cpsr  = 0x50;
     pcb[ 0 ].ctx.pc    = ( uint32_t )( &main_console );
@@ -159,7 +157,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 0 ].priority  = 2;
     pcb[ 0 ].age       = 0;
 
-
+/*
     memset( &pcb[ 1 ], 0, sizeof( pcb_t ) );
     pcb[ 1 ].pid       = 1;
     pcb[ 1 ].ctx.cpsr  = 0x50;
@@ -193,7 +191,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
     pcb[ 3 ].tos       = ( uint32_t )( &tos_P5  );
     pcb[ 3 ].priority  = 1;
     pcb[ 3 ].age       = 0;
-
+*/
 
 
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
@@ -254,7 +252,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       case 0x03 : { // 0x03 => fork( )
         pid_t newId = newPid();
         uint32_t offset;
-        PL011_putc( UART0, 'a', true );
+      //  PL011_putc( UART0, 'a', true );
 
         if(newId != -1){
           //memset?
@@ -264,7 +262,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
           offset    = (pcb[current->pid].tos) - (ctx->sp) ;
           pcb[newId].tos = startOfStack + (newId * 0x00001000);  //finds the new top of the stack for newId
           pcb[newId].ctx.sp  = pcb[newId].tos - offset;
-          PL011_putc( UART0,'b' , true );
+          //PL011_putc( UART0,'b' , true );
 
           pcb[newId].pid = newId;  //The pid of the new process will be the newId
           pcb[newId].available = 0;
@@ -274,7 +272,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
           ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
           pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
-          PL011_putc( UART0, 'c', true );
+        //  PL011_putc( UART0, 'c', true );
       }
     //else write( STDOUT_FILENO, "Fork failed", 11);
 //return error message if the fork wasn't successful
@@ -316,15 +314,36 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         break;
       }
 
-      case 0x07 : { //0x07 => createp(int start, int end )
+      case 0x07 : { //0x07 => cpipe(int start, int end )
         int start = ( int )( ctx->gpr[ 0 ] );
         int end   = ( int )( ctx->gpr[ 1 ] );
-        int index = createPipe(start,end);
+        int index = nextPipe( start, end );
 
-
-
-
+        if(index != -1) ctx->gpr[ 0 ] = index;
+        break;
       }
+
+      case 0x08 : { //0x08 => readc( int id )
+        int id   = ( int )( ctx->gpr[ 0 ] );
+        enum request_t ans  = pipe[id].data;
+        ctx->gpr[ 0 ] = ans;
+        break;
+      }
+
+      case 0x09 : { //0x09 => writec( int id, request_t request)
+        int id      = ( int )( ctx->gpr[ 0 ] );
+        enum request_t request = ( enum request_t )( ctx->gpr[ 1 ] );
+        pipe[id].data = request;
+        break;
+      }
+
+      case 0xA  : { //0xA => getpid( );
+        int id = current->pid - 2;  //Fins the current philosopher process
+        ctx->gpr[ 0 ] = id;
+        break;
+      }
+
+
       default   : { // 0x?? => unknown/unsupported
         break;
       }

@@ -26,12 +26,12 @@ typedef struct {
 } ctx_t;
 
 
-enum state_t {
-  ready,
-  running,
-  wait,
-  terminated
-} ;
+enum request_t {
+  okay,
+  notokay,
+  eat,
+  finish,
+};
 
 typedef struct {
   pid_t pid;
@@ -40,13 +40,14 @@ typedef struct {
   int priority;
   int age;
   uint32_t tos;
-  enum state_t state;
 } pcb_t;
 
 typedef struct {
-  void* channel;
-  pid_t p_start;
-  pid_t p_end;
+  enum request_t data;
+  int flag_write;
+  int flag_read;
+  pid_t sender;
+  pid_t receiver;
 } pipe_t;
 
 

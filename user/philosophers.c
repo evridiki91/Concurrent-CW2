@@ -1,6 +1,8 @@
 #include "philosophers.h"
-/*
-enum status_t status {
+
+extern void main_waiter();
+
+enum status_t {
   eating,
   thinking,
 };
@@ -8,24 +10,27 @@ enum status_t status {
 
 typedef struct {
   int id;
-  int lfork;
-  int rfork;
-  int rightp;
-  int leftp;
   enum status_t status;
+  int ptw;
+  int wtp;
 } philosopher_t;
 
-philosopher_t noPhilosophers[16];
+philosopher_t phil;
 
+void eat_request(){
+  writec(phil.id*2 + 1, 1);
+}
 
 void main_philosophers (){
-for(int i = 0; i < 16; i++){
-  noPhilosophers[i].id      = i;
-  noPhilosophers[i].lfork   = 1;
-  noPhilosophers[i].rfork   = 1;
-  noPhilosophers[i].rightp  = (i + 1) % 16;
-  noPhilosophers[i].leftp   = (i - 1) % 16;
-  noPhilosophers[i].status  = thinking;
+  phil.id     = getpid(); //need a way to know which philosopher is being created. Use getpid system call
+  phil.ptw    = phil.id * 2 + 1;
+  phil.wtp    = phil.id * 2;
+  phil.status = thinking;
+
+  // Ask waiter permission to eat
+  writec(phil.ptw,eat);
+  enum request_t permission = readc(phil.ptw);
+
+
+
   }
-}
-*/

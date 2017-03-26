@@ -45,6 +45,15 @@ void itoa( char* r, int x ) {
   return;
 }
 
+void print(char* message){
+
+  while(*message != '\0'){
+    write(STDOUT_FILENO, message, 1);
+    message++;
+  }
+  return;
+}
+
 void yield() {
   asm volatile( "svc %0     \n" // make system call SYS_YIELD
               :
@@ -130,16 +139,49 @@ int kill( int pid, int x ) {
   return r;
 }
 
-int createp( int start, int end ){
+int cpipe( int start, int end ){
   int r;
 
-  asm volatile( "mov r0, %2 \n" // assign r0 = p_start
-                "mov r1, %3 \n" // assign r1 = p_end
-                "svc %1     \n" // make system call SYS_CREATEP
+  asm volatile( "mov r0, %2 \n" // assign r0 = start
+                "mov r1, %3 \n" // assign r1 = end
+                "svc %1     \n" // make system call SYS_CPIPE
                 "mov %0, r0 \n" // assign r0 = r
               : "=r" (r)
-              :"I" (SYS_CREATEP), "r" (start), "r" (end)
+              :"I" (SYS_CPIPE), "r" (start), "r" (end)
               : "r0", "r1" );
 
+  return r;
+}
+
+enum request_t readc( int id){
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 = id
+                "svc %1     \n" // make system call SYS_READC
+                "mov %0, r0 \n" // assign r0 = r
+              : "=r" (r)
+              : "I" (SYS_READC), "r" (id)
+              : "r0" );
+  return r;
+}
+
+void writec( int id, enum request_t request){
+  asm volatile( "mov r0, %1 \n" // assign r0 = id
+                "mov r1, %2 \n" //assign r1 = request
+                "svc %0     \n" // make system call SYS_WRITEC
+              :
+              : "I" (SYS_WRITEC), "r" (id), "r" (request)
+              : "r0", "r1" );
+  return ;
+}
+
+int getpid(){
+  int r;
+
+  asm volatile( "svc %1     \n" // make system call SYS_GETPID
+                "mov %0, r0 \n" // assign r  = r0    ,% is for arguments
+              : "=r" (r)
+              : "I" (SYS_GETPID)
+              : "r0" );
   return r;
 }
