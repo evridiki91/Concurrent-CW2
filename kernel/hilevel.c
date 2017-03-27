@@ -1,6 +1,6 @@
 #include "hilevel.h"
 
-#define TOTALP 15
+#define TOTALP 30
 #define PHILOSOPHERS 16
 #define PIPES 32
 
@@ -85,7 +85,10 @@ for(int i = 0; i < PIPES; i++){
 int nextPipe( int sender, int receiver ){
   int index = -1;
   for(int i = 0; i < PIPES; i++){
-    if( (pipe[i].sender == -1) && (pipe[i].receiver == -1)) index = i;
+    if( (pipe[i].sender == -1) && (pipe[i].receiver == -1)) {
+      index = i;
+      break;
+    }
   }
 
   if (index != -1){
@@ -121,7 +124,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
    * - enabling IRQ interrupts.
    */
 
-  TIMER0->Timer1Load  = 0x00200000; // select period = 2^20 ticks ~= 1 sec
+  TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
   TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
   TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
   TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
@@ -195,7 +198,7 @@ void hilevel_handler_rst( ctx_t* ctx) {
 
 
 current = &pcb[ 0 ]; memcpy( ctx, &current->ctx, sizeof( ctx_t ) );
-
+initialisePipes();
 
   return;
 }

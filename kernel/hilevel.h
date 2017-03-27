@@ -44,8 +44,6 @@ typedef struct {
 
 typedef struct {
   enum request_t data;
-  int flag_write;
-  int flag_read;
   pid_t sender;
   pid_t receiver;
 } pipe_t;
