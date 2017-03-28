@@ -85,15 +85,16 @@ for(int i = 0; i < PIPES; i++){
 int nextPipe( int sender, int receiver ){
   int index = -1;
   for(int i = 0; i < PIPES; i++){
-    if( (pipe[i].sender == -1) && (pipe[i].receiver == -1)) {
+    if( (pipe[ i ].sender == -1) && (pipe[ i ].receiver == -1)) {
       index = i;
       break;
     }
   }
 
   if (index != -1){
-  pipe[index].sender    = sender;
-  pipe[index].receiver  = receiver;
+  pipe[ index ].sender    = sender;
+  pipe[ index ].receiver  = receiver;
+  pipe[ index ].full      = 0;
   }
 
 return index;
@@ -354,18 +355,12 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         break;
       }
 
-      case 0xC  : { //0xC => mfull(int id); TODO combine with the other below
+      case 0xC  : { //0xC => changec(int id, int x);
         int id = ( int )( ctx->gpr[0] );
-        pipe[id].full = 1;
+        int x  = ( int )( ctx->gpr[1] );
+        pipe[id].full = x;
         break;
       }
-
-      case 0xD  : { //0xD => mempty(int id);
-        int id = ( int )( ctx->gpr[0] );
-        pipe[id].full = 0;
-        break;
-      }
-
 
       default   : { // 0x?? => unknown/unsupported
         break;

@@ -42,9 +42,7 @@ enum request_t {
 #define SYS_WRITEC    ( 0x09 )
 #define SYS_GETPID    ( 0xA  )
 #define SYS_ISFULL    ( 0xB  )
-#define SYS_MFULL     ( 0xC  )
-#define SYS_MEMPTY    ( 0xD  )
-
+#define SYS_CHANGEC   ( 0xC  )
 
 
 #define SIG_TERM      ( 0x00 )
@@ -95,11 +93,8 @@ extern int getpid();
 // Checks whether something was written in a channel
 extern int isfull(int id);
 
-//Indicate that the channel has data in it
-extern void mfull(int id);
-
-//Indicate that the channel has not data in it
-extern void mempty(int id);
+//Make channel full or empty
+extern void changec(int id, int x);
 
 
 #endif

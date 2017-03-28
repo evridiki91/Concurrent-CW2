@@ -211,19 +211,12 @@ int isfull( int id ){
   return r;
 }
 
-void mfull( int id ){
+void changec( int id, int x ){
   asm volatile( "mov r0, %1 \n" // assign r0 = id
+                "mov r1, %2 \n" //assign r1 = x
                 "svc %0     \n" // make system call SYS_MFULL
               :
-              : "I" (SYS_MFULL), "r" (id)
-              : "r0" );
-  return r;
-}
-
-void mempty( int id ){
-  asm volatile( "mov r0, %1 \n" // assign r0 = id
-                "svc %0     \n" // make system call SYS_MEMPTY
-              :
-              : "I" (SYS_MEMPTY), "r" (id)
-              : "r0" );
+              : "I" (SYS_CHANGEC), "r" (id), "r" (x)
+              : "r0", "r1" );
+  return;
 }
