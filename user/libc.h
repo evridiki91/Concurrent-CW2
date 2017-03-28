@@ -41,6 +41,10 @@ enum request_t {
 #define SYS_READC     ( 0x08 )
 #define SYS_WRITEC    ( 0x09 )
 #define SYS_GETPID    ( 0xA  )
+#define SYS_ISFULL    ( 0xB  )
+#define SYS_MFULL     ( 0xC  )
+#define SYS_MEMPTY    ( 0xD  )
+
 
 
 #define SIG_TERM      ( 0x00 )
@@ -79,13 +83,23 @@ extern int  kill( pid_t pid, int x );
 // creates a new pipe with one process at the start and another one at the end
 extern int cpipe( int start, int end);
 
-// reads a request from the channel
+// reads from the channel
 extern enum request_t readc(int id);
 
-
+//Writes in a channel
 extern void writec(int id,enum request_t request);
 
 // returns the current philosopher process id
 extern int getpid();
+
+// Checks whether something was written in a channel
+extern int isfull(int id);
+
+//Indicate that the channel has data in it
+extern void mfull(int id);
+
+//Indicate that the channel has not data in it
+extern void mempty(int id);
+
 
 #endif

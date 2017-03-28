@@ -34,25 +34,26 @@ void main_philosophers (){
 if(phil.status == hungry){
   // Ask waiter permission to eat
   writec(phil.ptw,eat);
-//  print(" Eat request to pwt pipe "); print_int(phil.ptw); print(" \n");
-  print(" Philosopher "); print_int(phil.id); print(" sent request "); print_int(readc(phil.ptw)); print("\n");
+  print("Philosopher no: "); print_int(phil.id); print(" wants to eat \n");
+  // print(" Eat request to pwt pipe "); print_int(phil.ptw); print(" \n");
+  //print(" Philosopher "); print_int(phil.id); print(" sent request "); print_int(readc(phil.ptw)); print("\n");
 
   thinking();
 
   enum request_t permission = readc(phil.wtp);
-  print(" philosopher ");print_int(phil.id); print(" receives permission"); print_int(permission); print("\n");
+//  print(" philosopher ");print_int(phil.id); print(" receives permission"); print_int(permission); print("\n");
 
 //  print(" Read permission from wtp pipe "); print_int(phil.wtp); print(" \n \n");
 
   if(permission == okay){
-  print(" Philosopher "); print_int(phil.id); print(" is eating \n \n");
+  print(" Philosopher "); print_int(phil.id); print(" is eating \n ");
 
     phil.status = nothungry;    // The philosopher ate
     thinking();
     writec(phil.ptw,finish); // Finished eating, inform the waiter
-    print(" Philosopher "); print_int(phil.id); print(" sent request "); print_int(readc(phil.ptw)); print("\n");
+    //print(" Philosopher "); print_int(phil.id); print(" sent request "); print_int(readc(phil.ptw)); print("\n");
   //  print(" Finish to pwt pipe "); print_int(phil.ptw); print(" \n");
-    print(" Philosopher "); print_int(phil.id); print(" has finished eating \n \n");
+    print(" Philosopher "); print_int(phil.id); print(" has finished eating \n ");
       }
 
     }

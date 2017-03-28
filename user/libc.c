@@ -198,3 +198,32 @@ int getpid(){
               : "r0" );
   return r;
 }
+
+int isfull( int id ){
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 = id
+                "svc %1     \n" // make system call SYS_ISFULL
+                "mov %0, r0 \n" // assign r0 = r
+              : "=r" (r)
+              : "I" (SYS_ISFULL), "r" (id)
+              : "r0" );
+  return r;
+}
+
+void mfull( int id ){
+  asm volatile( "mov r0, %1 \n" // assign r0 = id
+                "svc %0     \n" // make system call SYS_MFULL
+              :
+              : "I" (SYS_MFULL), "r" (id)
+              : "r0" );
+  return r;
+}
+
+void mempty( int id ){
+  asm volatile( "mov r0, %1 \n" // assign r0 = id
+                "svc %0     \n" // make system call SYS_MEMPTY
+              :
+              : "I" (SYS_MEMPTY), "r" (id)
+              : "r0" );
+}

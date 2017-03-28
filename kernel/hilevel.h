@@ -27,10 +27,10 @@ typedef struct {
 
 
 enum request_t {
-  okay,
-  notokay,
-  eat,
-  finish,
+  okay, //0
+  notokay, //1
+  eat, //2
+  finish, //3
 };
 
 typedef struct {
@@ -44,6 +44,7 @@ typedef struct {
 
 typedef struct {
   enum request_t data;
+  int full;  //0 or 1
   pid_t sender;
   pid_t receiver;
 } pipe_t;

@@ -115,6 +115,7 @@ void scheduler( ctx_t* ctx ) {
 
 
 void hilevel_handler_rst( ctx_t* ctx) {
+
   /* Configure the mechanism for interrupt handling by
    *
    * - configuring timer st. it raises a (periodic) interrupt for each
@@ -343,6 +344,25 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       case 0xA  : { //0xA => getpid( );
         int id = current->pid - 2;  //Fins the current philosopher process
         ctx->gpr[ 0 ] = id;
+        break;
+      }
+
+      case 0xB  : { //0xB => isfull(int id);
+        int id = ( int )( ctx->gpr[0] );
+        int ans = pipe[id].full;
+        ctx->gpr[ 0 ] = ans;
+        break;
+      }
+
+      case 0xC  : { //0xC => mfull(int id); TODO combine with the other below
+        int id = ( int )( ctx->gpr[0] );
+        pipe[id].full = 1;
+        break;
+      }
+
+      case 0xD  : { //0xD => mempty(int id);
+        int id = ( int )( ctx->gpr[0] );
+        pipe[id].full = 0;
         break;
       }
 
