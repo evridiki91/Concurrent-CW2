@@ -1,5 +1,5 @@
 #include "waiter.h"
-#define PHILS 5
+#define PHILS 16
 
 
 extern void main_philosophers();
@@ -61,6 +61,7 @@ void main_waiter(){
     }
 
     else if(data == finish){
+    //  print(" Waiter "); print(" receives that phil "); print_int(i); print("has finished.\n");
       waiter.forks[i] = 1; //Make the forks available again
       waiter.forks[(i + 1) % PHILS] = 1;
       }
