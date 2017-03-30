@@ -1,11 +1,14 @@
 #include "hilevel.h"
 
+
 #define TOTALP 30
 #define PHILOSOPHERS 16
 #define PIPES 32
 
 pcb_t  pcb[TOTALP], *current = NULL;
 pipe_t pipe[PIPES];
+
+uint16_t fb[ 600 ][ 800 ];
 
 /*
 extern void     main_P3();
@@ -116,6 +119,44 @@ void scheduler( ctx_t* ctx ) {
 
 
 void hilevel_handler_rst( ctx_t* ctx) {
+  // Configure the LCD display into 800x600 SVGA @ 36MHz resolution.
+
+  SYSCONF->CLCD      = 0x2CAC;     // per per Table 4.3 of datasheet
+  LCD->LCDTiming0    = 0x1313A4C4; // per per Table 4.3 of datasheet
+  LCD->LCDTiming1    = 0x0505F657; // per per Table 4.3 of datasheet
+  LCD->LCDTiming2    = 0x071F1800; // per per Table 4.3 of datasheet
+
+  LCD->LCDUPBASE     = ( uint32_t )( &fb );
+
+  LCD->LCDControl    = 0x00000020; // select TFT   display type
+  LCD->LCDControl   |= 0x00000008; // select 16BPP display mode
+  LCD->LCDControl   |= 0x00000800; // power-on LCD controller
+  LCD->LCDControl   |= 0x00000001; // enable   LCD controller
+
+  /* Configure the mechanism for interrupt handling by
+   *
+   * - configuring then enabling PS/2 controllers st. an interrupt is
+   *   raised every time a byte is subsequently received,
+   * - configuring GIC st. the selected interrupts are forwarded to the
+   *   processor via the IRQ interrupt signal, then
+   * - enabling IRQ interrupts.
+   */
+
+  PS20->CR           = 0x00000010; // enable PS/2    (Rx) interrupt
+  PS20->CR          |= 0x00000004; // enable PS/2 (Tx+Rx)
+  PS21->CR           = 0x00000010; // enable PS/2    (Rx) interrupt
+  PS21->CR          |= 0x00000004; // enable PS/2 (Tx+Rx)
+
+  uint8_t ack;
+
+        PL050_putc( PS20, 0xF4 );  // transmit PS/2 enable command
+  ack = PL050_getc( PS20       );  // receive  PS/2 acknowledgement
+        PL050_putc( PS21, 0xF4 );  // transmit PS/2 enable command
+  ack = PL050_getc( PS21       );  // receive  PS/2 acknowledgement
+
+
+  GICD0->ISENABLER1 |= 0x00300000; // enable PS2          interrupts
+
 
   /* Configure the mechanism for interrupt handling by
    *
@@ -138,6 +179,14 @@ void hilevel_handler_rst( ctx_t* ctx) {
   GICD0->CTLR         = 0x00000001; // enable GIC distributor
 
   int_enable_irq();
+
+  // Write example red/green/blue test pattern into the frame buffer.
+
+for( int i = 0; i < 600; i++ ) {
+  for( int j = 0; j < 800; j++ ) {
+    fb[ i ][ j ] = 0x1F << ( ( i / 200 ) * 5 );
+  }
+}
 
   /* Initialise PCBs representing processes stemming from execution of
      * the two user programs.  Note in each case that
@@ -205,6 +254,14 @@ initialisePipes();
   return;
 }
 
+uint8_t set_bit(uint8_t x, int bit){
+  return (x |= 1 << bit);
+}
+
+uint8_t clear_bit(uint8_t x, int bit){
+  return (x &= ~(1 << bit));
+}
+
 void hilevel_handler_irq(ctx_t* ctx) {
   // Step 2: read  the interrupt identifier so we know the source.
 
@@ -217,6 +274,37 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
     TIMER0->Timer1IntClr = 0x01;
   }
+
+  // Step 4: handle the interrupt, then clear (or reset) the source.
+  //PS20 - KEYBOARD, PS21 MOUSE
+  else if     ( id == GIC_SOURCE_PS20 ) {
+    uint8_t x = PL050_getc( PS20 );       print(" is pressed \n");
+
+    /*PL011_putc( UART0, '0',                      true );
+    PL011_putc( UART0, '<',                      true );
+    PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
+    PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
+    PL011_putc( UART0, '>',                      true );
+    */
+    if ((x >> 7) == 0 ) PL011_putc( UART0, lookup[x], true ); //Shows what is pressed
+      else {
+        uint8_t newx = clear_bit(x, 7);
+        PL011_putc(UART0, lookup[newx] ,true);
+        print(" is released \n");
+    }
+  }
+  else if( id == GIC_SOURCE_PS21 ) {
+    uint8_t x = PL050_getc( PS21 );
+
+    PL011_putc( UART0, '1',                      true );
+    PL011_putc( UART0, '<',                      true );
+    PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
+    PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
+    PL011_putc( UART0, '>',                      true );
+  }
+
+
+
 
   // Step 5: write the interrupt identifier to signal we're done.
 
