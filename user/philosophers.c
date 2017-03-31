@@ -15,44 +15,44 @@ typedef struct {
   int wtp;
 } philosopher_t;
 
+/*
 void thinking(){
   for(int i = 0; i < 0x20000000; i++)
     asm volatile( "nop" );
 }
+*/
 
-void main_philosophers (){
+void main_philosophers ( ){
   philosopher_t phil;
-  phil.id     = getpid(); //need a way to know which philosopher is being created. Use getpid system call
+  phil.id     = getpid( ); //need a way to know which philosopher is being created. Use getpid system call
   phil.ptw    = phil.id * 2 + 1;
   phil.wtp    = phil.id * 2;
   phil.status = hungry;
 
 
 
-//print("This is philosopher "); print_int(phil.id); print(" \n");
-  while(1){
+  while( 1 ){
 
-if(phil.status == hungry){
-    if( isfull( phil.ptw ) == 0){
+if( phil.status == hungry ){
+    if( isfull( phil.ptw ) == 0){ //If he hasn't make any requests yet
       writec ( phil.ptw, eat ); // Ask waiter permission to eat
-      changec( phil.ptw, 1 );
-      print("Philosopher no: "); print_int(phil.id); print(" wants to eat. \n");
-     //Make the channel full
+      changec( phil.ptw, 1 ); //Make the channel full
+    // print("Philosopher no: "); print_int(phil.id); print(" wants to eat. \n");
     //  thinking();
-}
+    }
 
-    if( isfull( phil.wtp) == 1){
+    if( isfull( phil.wtp ) == 1){
       enum request_t permission = readc( phil.wtp );
-      changec( phil.wtp, 0);
+      changec( phil.wtp, 0 );
 
-      if(permission == okay){
-        
-        print("Philosopher no: "); print_int(phil.id); print(" is eating. \n");
+      if( permission == okay ){
+
+          print( "Philosopher no: " ); print_int( phil.id ); print(" is eating. \n");
           phil.status = nothungry; // The philosopher ate
         //  thinking();
           writec( phil.ptw,finish ); // Finished eating, inform the waiter
           changec( phil.ptw, 1 );
-          print("Philosopher no: "); print_int(phil.id); print(" has finished eating. \n");
+          print("Philosopher no: "); print_int( phil.id ); print(" has finished eating. \n");
         }
       }
     }

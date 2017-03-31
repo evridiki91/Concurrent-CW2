@@ -2,15 +2,19 @@
 
 
 #define TOTALP 30
-#define PHILOSOPHERS 16
 #define PIPES 32
 
 pcb_t  pcb[TOTALP], *current = NULL;
 pipe_t pipe[PIPES];
 
 uint16_t fb[ 600 ][ 800 ];
+int nbytes;
+uint16_t cursorX; //Cursor's xcoordinates
+uint16_t cursorY; //Cursor's ycoordinates
+
 
 /*
+ * User programs:
 extern void     main_P3();
 extern uint32_t tos_P3;
 extern void     main_P4();
@@ -18,43 +22,54 @@ extern uint32_t tos_P4;
 extern void     main_P5();
 extern uint32_t tos_P5;
 */
+
 extern void     main_console();
 extern uint32_t tos_console;
 
-startOfStack = &tos_console;
+startOfStack = &tos_console; //Make  the start of the stack the console's tos.
 
 
+/*newPid() function : returns the next available
+* id by going through a loop of all the processes and
+* checking which id is not in use by another process.
+*/
 pid_t newPid( ){
-  for(int i = 0; i < TOTALP; i++ ){
-    if (pcb[i].available == 1){
-      pcb[i].available = 0;    //make it unavailable
+  for( int i = 0; i < TOTALP; i++ ){
+    if( pcb[ i ].available == 1){
+      pcb[ i ].available = 0;   //make it unavailable
       return i;
     }
   }
   return -1;
 }
 
-//next process to be run
+/*nextProcess() function: is used in order to offer a round
+* robin scheduler. It returns the next process that needs to be
+* proceed, in a cycle order.
+*/
 pid_t nextProcess( ){
-  for(int i = 0; i < TOTALP; i++ ){
-    if (pcb[( (i + (current->pid) + 1) % TOTALP)].available == 0){
-      return (i + (current->pid) + 1) % TOTALP;
+  for( int i = 0; i < TOTALP; i++ ){
+    if( pcb[( ( i + ( current->pid ) + 1) % TOTALP ) ].available == 0){
+       return ( i + ( current->pid ) + 1 ) % TOTALP;
     }
   }
-  //return error
+   print("Error: there is not any process to be executed. \n");
 }
 
-pid_t maxPriority(){
+/*maxPriority() function: is used in order to find the next process
+* that is going to be executed based on their priority and age.
+*/
+pid_t maxPriority( ){
   int max = -1;
   pid_t nextId;
-  for(int i = 0; i < TOTALP; i++){
-    if ( (pcb[i].priority) > max){
-      max = pcb[i].priority;
+  for( int i = 0; i < TOTALP; i++ ){
+    if ( ( pcb[ i ].priority ) > max ){
+      max     = pcb[ i ].priority;
       nextId  = i;
     }
-    else if ( (pcb[i].priority) == max){
-        if ( (pcb[i].age) > (pcb[nextId].age) ){
-          max = pcb[i].priority;
+    else if ( ( pcb[ i ].priority ) == max ){
+        if ( ( pcb[ i ].age ) > ( pcb[ nextId ].age ) ){
+          max    = pcb[ i ].priority;
           nextId = i;
         }
       }
@@ -62,15 +77,18 @@ pid_t maxPriority(){
   return nextId;
 }
 
-
+/* Priority scheduler: it uses the maxPriority() function.
+ *Solves the starvation problemby by introducing aging. Each round
+ *every process's age and priority is increased, except the current's.
+*/
 /*
 void scheduler( ctx_t* ctx ) {
-    pid_t new = maxPriority();
-    memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
-    current = &pcb[new];
-    for (int i = 0; i < TOTALP; i++){
-      if(i != (current->pid) && (pcb[i].available == 0)){ //Solves starvation
+    pid_t new = maxPriority( );
+    memcpy( &pcb[ current->pid ].ctx, ctx, sizeof( ctx_t ) );
+    memcpy( ctx, &pcb[ new ].ctx, sizeof( ctx_t ) );
+    current  = &pcb[ new ];
+    for ( int i = 0; i < TOTALP; i++ ){
+      if( i != ( current->pid ) && ( pcb[ i ].available == 0)){ //Solves starvation
         pcb[i].priority ++;
         pcb[i].age ++;
       }
@@ -78,87 +96,139 @@ void scheduler( ctx_t* ctx ) {
   return;
 }
 */
-void initialisePipes() {
-for(int i = 0; i < PIPES; i++){
-  memset( &pipe[ i ], -1, sizeof(pipe_t) );
+
+/* Round Robin scheduler: uses the nextProcess() function.
+*/
+void scheduler( ctx_t* ctx ) {
+    pid_t new = nextProcess();
+    memcpy( &pcb[ current->pid ].ctx, ctx, sizeof( ctx_t ) );
+    memcpy( ctx, &pcb[ new ].ctx, sizeof( ctx_t ) );
+    current = &pcb[ new ];
+  return;
+}
+
+/*******************************************************************************
+FUNCTIONS USED FOR INTER PROCESS COMMUNICATION (IPC) ***************************
+********************************************************************************
+
+/* initialisePipes( ) function: Initialises all the pipes
+*/
+void initialisePipes( ) {
+for( int i = 0; i < PIPES; i++ ){
+  memset( &pipe[ i ], -1, sizeof( pipe_t ) );
   }
 }
 
 
+/* nextPipe() function: returns the index of a pipe if that pipe is
+*available.(if it doesn't belong to someone).
+*/
 int nextPipe( int sender, int receiver ){
   int index = -1;
-  for(int i = 0; i < PIPES; i++){
-    if( (pipe[ i ].sender == -1) && (pipe[ i ].receiver == -1)) {
+  for( int i = 0; i < PIPES; i++ ){
+    if( ( pipe[ i ].sender == -1) && ( pipe[ i ].receiver == -1) ) {
       index = i;
       break;
     }
   }
 
-  if (index != -1){
-  pipe[ index ].sender    = sender;
-  pipe[ index ].receiver  = receiver;
-  pipe[ index ].full      = 0;
-  }
+    if( index != -1 ){
+    pipe[ index ].sender    = sender;
+    pipe[ index ].receiver  = receiver;
+    pipe[ index ].full      = 0;
+    }
 
 return index;
-
 }
 
+/*******************************************************************************
+FUNCTIONS USED FOR MANAGEMENT OF THE LCD AND PS/2 CONTROLLERS*******************
+********************************************************************************
+*/
 
-
-void scheduler( ctx_t* ctx ) {
-    pid_t new = nextProcess();
-    memcpy( &pcb[current->pid].ctx, ctx, sizeof( ctx_t ) );
-    memcpy( ctx, &pcb[new].ctx, sizeof( ctx_t ) );
-    current = &pcb[new];
-  return;
-}
-
+/* ctoasc (char c) function: is used to convert a character c
+* to its corresponding ascii code.
+*/
 int ctoasc( char c){
   int x;
   x = c;
   return x;
 }
 
-void printpixels(int asc, int offx, int offy){
+/* printpixels function: is used to print pixelated letters on the LCD by using
+* a lookupTable first to find the corresponding character that came from the
+* keyboard interrupt, and then another table to find the letter's format.
+*/
+void printpixels( int asc, int x, int y ){
   int val;
-  for(int i = 8; i >= 0; i--){
-    char pix = ascii[asc][i];
-    for(int j = 0; j < 8; j++){
-      val = (pix >> j)& 0x1;
-      if (val != 0) fb[offx + i ][ offy + j ] = 0;
-      else fb[offx + i ][ offy + j ] = 0x7FFF;
+  for( int i = 16; i >= 0; i-- ){
+    int pix = ascii[ asc ][ i ];
+    for( int j = 0; j < 16; j++ ){
+      val = ( pix >> j ) & 0x1; // pixel is shifted to see whether the bit is 1 or 0.
+      if (val == 1) fb[ y + i ][ x + j ] = 0;
+      else fb[ y + i ][ x + j ] = 0x7FFF;
     }
   }
 }
 
-void resetImage(){
-  for( int i = 0; i < 600; i++ ) {
-    for( int j = 0; j < 800; j++ ) {
+
+/* resetImage() function: is used to set all the pixels of the LCD to black.
+*/
+void resetImage( ){
+  for( int i = 0; i < 600; i++ ){
+    for( int j = 0; j < 800; j++ ){
       fb[ i ][ j ] = 0;
     }
   }
 }
 
-void mouseCursor(){
-for(int i = 0; i < 16; i++){
+
+/* mouseCursor function: sets all the pixels that are needed to create a cursor
+* image on the screen.
+*/
+void mouseCursor( int x, int y ){
+for( int i = 0; i < 16; i++ ){
   for( int j = 0; j < 16; j++ ){
     int val = ( cursor[ i ] >> j ) & 0x1;
-    if ( val == 1 ) fb[ 200 + i ][ 200 + j ] = 0x7FFF;
+    if ( val == 1 ) fb[ y + i ][ x + j ] = 0x7FFF;
     }
   }
 }
 
-void clickCursor(){
-for(int i = 0; i < 16; i++){
+
+/*clickCursor function: sets all the pixels that are needed to create a click_cursor
+* image on the screen.
+*/
+void clickCursor( int x, int y ){
+for( int i = 0; i < 16; i++ ){
   for( int j = 0; j < 16; j++ ){
     int val = ( cursor_click[ i ] >> j ) & 0x1;
-    if ( val == 1 ) fb[ 200 + i ][ 200 + j ] = 0x7FFF;
+    if ( val == 1 ) fb[ y + i ][ x + j ] = 0x7FFF;
     }
   }
 }
 
+/*Clears the current cursor from LCD.
+*/
+void clearCursor( ){
+  for( int i = 0; i < 16; i++ ){
+    for( int j = 0; j < 16; j++ ){
+      fb[ cursorY + i ][ cursorX + j ] = 0;
+    }
+  }
+}
+
+//Just a function to clear bits
+uint8_t clear_bit(uint8_t x, int bit){
+  return (x &= ~(1 << bit));
+}
+
+
+/*******RESET*******
+*******************/
+
 void hilevel_handler_rst( ctx_t* ctx) {
+
   // Configure the LCD display into 800x600 SVGA @ 36MHz resolution.
 
   SYSCONF->CLCD      = 0x2CAC;     // per per Table 4.3 of datasheet
@@ -220,10 +290,10 @@ void hilevel_handler_rst( ctx_t* ctx) {
 
   int_enable_irq();
 
-  // Write example red/green/blue test pattern into the frame buffer.
   resetImage();
-
-clickCursor();
+  int nbytes = 0; // Initialise the counter of bytes for mouse interrupt
+  cursorX = 100; //X-coordinate
+  cursorY = 400; //Y -coordinate
 
 
   /* Initialise PCBs representing processes stemming from execution of
@@ -233,7 +303,7 @@ clickCursor();
      *   mode, with IRQ interrupts enabled, and
      * - the PC and SP values matche the entry point and top of stack.
      */
-     //TODO: iS IT CORRECT
+
     for (int i = 0; i < TOTALP; i++){
       pcb[i].available = 1;
     }
@@ -292,21 +362,16 @@ initialisePipes();
   return;
 }
 
-uint8_t set_bit(uint8_t x, int bit){
-  return (x |= 1 << bit);
-}
-
-uint8_t clear_bit(uint8_t x, int bit){
-  return (x &= ~(1 << bit));
-}
-
+/******************************************************************************
+*********INTERRUPT REQUEST HANDLER*********************************************
+*******************************************************************************
+*/
 void hilevel_handler_irq(ctx_t* ctx) {
-  // Step 2: read  the interrupt identifier so we know the source.
 
+  // Step 2: read  the interrupt identifier so we know the source.
   uint32_t id = GICC0->IAR;
 
   // Step 4: handle the interrupt, then clear (or reset) the source.
-
   if( id == GIC_SOURCE_TIMER0 ) {
     scheduler(ctx);
 
@@ -314,33 +379,39 @@ void hilevel_handler_irq(ctx_t* ctx) {
   }
 
   // Step 4: handle the interrupt, then clear (or reset) the source.
-  //PS20 - KEYBOARD, PS21 MOUSE
+  //PS20 - KEYBOARD
   else if     ( id == GIC_SOURCE_PS20 ) {
     uint8_t x = PL050_getc( PS20 );
 
-    /*PL011_putc( UART0, '0',                      true );
+    /*PL011_putc( UART0, '0',                    true );
     PL011_putc( UART0, '<',                      true );
     PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
     PL011_putc( UART0, '>',                      true );
     */
     if ((x >> 7) == 0 ) {
-      PL011_putc( UART0, lookup[x], true ); //Shows what is pressed
+      PL011_putc( UART0, lookup[x], true ); //Shows what is pressed on the keyboard
       int asc = ctoasc(lookup[x]);
       print(" is pressed \n");
-      printpixels(asc, 200, 100);
+      printpixels(asc, 50, 50);
     }
+
       else {
         uint8_t newx = clear_bit(x, 7);
         PL011_putc(UART0, lookup[newx] ,true);
         print(" is released \n");
         resetImage();
-
     }
   }
 
+  //MOUSE INTERRUPT
   else if( id == GIC_SOURCE_PS21 ) {
-    int nbytes = 0;
+
+    clearCursor();
+    uint16_t byte1;
+    uint16_t byte2;
+    uint16_t byte3;
+
     uint8_t x = PL050_getc( PS21 );
 /*
     PL011_putc( UART0, '1',                      true );
@@ -349,44 +420,66 @@ void hilevel_handler_irq(ctx_t* ctx) {
     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
     PL011_putc( UART0, '>',                      true );
     */
- switch (nbytes){
-   case 0 : {
-     uint16_t byte1      = ( uint16_t )( x );
-     uint16_t y_sign_bit = (byte1 >> 5) & 0x1;
-     uint16_t x_sign_bit = (byte1 >> 4) & 0x1;
-     nbytes              = (nbytes + 1) % 2;
+    switch (nbytes) {
 
-     break;
-   }
+     case 0 : {
+       uint16_t byte1      = ( uint16_t )( x );
+       if( ( (byte1 >> 0) & 0x1) != 0){
+         print("Left button is pressed \n");
+         clearCursor();
+         clickCursor(cursorX, cursorY);
+       }
+    // uint16_t y_sign_bit = (byte1 >> 5) & 0x1;
+    // uint16_t x_sign_bit = (byte1 >> 4) & 0x1;
+       nbytes              = (nbytes + 1) % 3;
 
-   case 1 : {
-     uint16_t byte2 = ( uint16_t )( x );
-     uint16_t x_movement = byte2;
-     nbytes              = (nbytes + 1) % 2;
+       break;
+      }
 
-     break;
-   }
+     case 1 : {
+       uint16_t byte2      = ( uint16_t )( x );
+       int16_t x_movement  = byte2 - ((byte1 << 4) & 0x100);
+       x_movement          = x_movement/16;
+       print("x must move: "); print_int(x_movement); print("\n");
+       if((cursorX + x_movement) <= 0) cursorX = 0;
+       else if(cursorX >=800) cursorX = 800;
+       else cursorX       = (cursorX + x_movement );
+       nbytes              = (nbytes + 1) % 3;
 
-   case 2 : {
-     uint16_t byte3 = ( uint16_t )( x );
-     uint16_t y_movement = byte3;
-     nbytes              = (nbytes + 1) % 2;
+       break;
+      }
 
-     break;
-   }
- }
+     case 2 : {
+       uint16_t byte3      = ( uint16_t )( x );
+       int16_t y_movement  = byte3 - ((byte1 << 3) & 0x100);
+       y_movement          = y_movement/16;
+       print("y must move: "); print_int(y_movement); print("\n");
 
-  }
+       if((cursorY - y_movement) <= 0) cursorY = 0;
+       else if(cursorY >=600) cursorY = 600;
+       else cursorY       = (cursorY - y_movement );
+       mouseCursor( cursorX, cursorY );
+       print("X = "); print_int(cursorX); print(" and ");
+       print("Y = "); print_int(cursorY); print("\n");
 
+       nbytes              = (nbytes + 1) % 3;
+       break;
+      }
+    }
 
+}
 
 
   // Step 5: write the interrupt identifier to signal we're done.
-
   GICC0->EOIR = id;
 
   return;
 }
+
+/******************************************************************************
+***************SVC HANDLER*****************************************************
+******************************************************************************/
+
 
 void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
   /* Based on the identified encoded as an immediate operand in the
@@ -420,65 +513,57 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       case 0x03 : { // 0x03 => fork( )
         pid_t newId = newPid();
         uint32_t offset;
-      //  PL011_putc( UART0, 'a', true );
 
         if(newId != -1){
-          //memset?
           memset( &pcb[ newId ], 0, sizeof( pcb_t ) );
 
-          memcpy( &pcb[newId].ctx, ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
-          offset    = (pcb[current->pid].tos) - (ctx->sp) ;
-          pcb[newId].tos = startOfStack + (newId * 0x00001000);  //finds the new top of the stack for newId
-          pcb[newId].ctx.sp  = pcb[newId].tos - offset;
-          //PL011_putc( UART0,'b' , true );
+          memcpy( &pcb[ newId ].ctx, ctx, sizeof( ctx_t ) ); //memcpy(destination,context,size)
+          offset                 = ( pcb[ current->pid ].tos ) - ( ctx->sp ) ;
+          pcb[ newId ].tos       = startOfStack + ( newId * 0x00001000 ); //finds the new top of the stack for newId
+          pcb[ newId ].ctx.sp    = pcb[ newId ].tos - offset;
 
-          pcb[newId].pid = newId;  //The pid of the new process will be the newId
-          pcb[newId].available = 0;
-          pcb[newId].priority = pcb[current->pid].priority; //Same priority as the parent
-          pcb[newId].age = 0;  //Set the child's age to 0;
-
+          pcb[ newId ].pid       = newId;  //The pid of the new process will be the newId
+          pcb[ newId ].available = 0;
+          pcb[ newId ].priority  = pcb[ current->pid ].priority; //Same priority as the parent
+          pcb[ newId ].age       = 0;  //Set the child's age to 0;
 
           ctx->gpr[ 0 ] = newId; //Returns the child's id to the parent
-          pcb[newId].ctx.gpr[0] = 0;  //fork returns zero to child's gpr[0] (output).
-        //  PL011_putc( UART0, 'c', true );
-      }
-    //else write( STDOUT_FILENO, "Fork failed", 11);
-//return error message if the fork wasn't successful
+          pcb[ newId ].ctx.gpr[ 0 ] = 0;  //fork returns zero to child's gpr[0] (output).
 
-        // new process with new pcb
-        //
+      }
+        else {
+          print( "Fork failed \n");
+          ctx->gpr[ 0 ] = -1;
+        }
 
         break;
       }
 
       case 0x04 : { // 0x04 => exit( int x )
         int    x  =  ( int  )( ctx->gpr[ 0 ] );
-        pcb[current->pid].available = 1;
-        pcb[current->pid].age = 0;
-        pcb[current->pid].priority = 0;
+        pcb[ current->pid ].available = 1;
+        pcb[ current->pid ].age       = 0;
+        pcb[ current->pid ].priority  = 0;
         scheduler(ctx);
         break;
       }
 
       case 0x05 : { // 0x05 =>  exec( const void* x )
-        void*  x   = ( void* )( ctx->gpr[ 0 ] );
-        ctx->pc    = (uint32_t)(x); //The program counter must be updated to the address x.
-        ctx->sp    = pcb[current->pid].tos; //we don't want to use the stuff in the sp so we set the sp to the tos
+        void*  x   = ( void*    )( ctx->gpr[ 0 ] );
+        ctx->pc    = ( uint32_t )( x ); //The program counter must be updated to the address x.
+        ctx->sp    = pcb[ current->pid ].tos; //we don't want to use the stuff in the sp so we set the sp to the tos
         ctx->cpsr  = 0x50;
-      /*  for(int i = 0; i < 13; i++){
-          ctx->gpr[i] = 0;
-        }*/
         break;
       }
 
       case 0x06 : { //0x06 => int kill( int pid, int x )
         int pid    = ( int )( ctx->gpr[ 0 ] );
         int x      = ( int )( ctx->gpr[ 1 ] );
-        pcb[pid].available = 1;
-        pcb[pid].age = 0;
-        pcb[pid].priority = 0;
-        pcb[pid].ctx.gpr[0] = x;
-        scheduler(ctx); //TODO: if i remove this will the timer change the process to the next one
+        pcb[ pid ].available = 1;
+        pcb[ pid ].age = 0;
+        pcb[ pid ].priority = 0;
+        pcb[ pid ].ctx.gpr[ 0 ] = x;
+        scheduler( ctx ); //TODO: if i remove this will the timer change the process to the next one
         break;
       }
 
@@ -492,35 +577,35 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
       }
 
       case 0x08 : { //0x08 => readc( int id )
-        int id   = ( int )( ctx->gpr[ 0 ] );
+        int id              = ( int )( ctx->gpr[ 0 ] );
         enum request_t ans  = pipe[id].data;
-        ctx->gpr[ 0 ] = ans;
+        ctx->gpr[ 0 ]       = ans;
         break;
       }
 
       case 0x09 : { //0x09 => writec( int id, request_t request)
-        int id      = ( int )( ctx->gpr[ 0 ] );
+        int id                 = ( int )( ctx->gpr[ 0 ] );
         enum request_t request = ( enum request_t )( ctx->gpr[ 1 ] );
-        pipe[id].data = request;
+        pipe[ id ].data        = request;
         break;
       }
 
       case 0xA  : { //0xA => getpid( );
-        int id = current->pid - 2;  //Fins the current philosopher process
+        int id        = current->pid - 2;  //Finds the current philosopher process
         ctx->gpr[ 0 ] = id;
         break;
       }
 
       case 0xB  : { //0xB => isfull(int id);
-        int id = ( int )( ctx->gpr[0] );
-        int ans = pipe[id].full;
+        int id        = ( int )( ctx->gpr[0] );
+        int ans       = pipe[id].full;
         ctx->gpr[ 0 ] = ans;
         break;
       }
 
       case 0xC  : { //0xC => changec(int id, int x);
-        int id = ( int )( ctx->gpr[0] );
-        int x  = ( int )( ctx->gpr[1] );
+        int id        = ( int )( ctx->gpr[0] );
+        int x         = ( int )( ctx->gpr[1] );
         pipe[id].full = x;
         break;
       }

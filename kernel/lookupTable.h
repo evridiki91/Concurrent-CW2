@@ -2,7 +2,7 @@
 #define __LOOKUPTABLE_H
 
 
-//From osdever.net
+//From www.osdever.net
 unsigned char lookup[128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
