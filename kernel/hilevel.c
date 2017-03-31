@@ -15,13 +15,14 @@ uint16_t cursorY; //Cursor's ycoordinates
 
 /*
  * User programs:
+ */
 extern void     main_P3();
 extern uint32_t tos_P3;
 extern void     main_P4();
 extern uint32_t tos_P4;
 extern void     main_P5();
 extern uint32_t tos_P5;
-*/
+
 
 extern void     main_console();
 extern uint32_t tos_console;
@@ -97,8 +98,10 @@ void scheduler( ctx_t* ctx ) {
 }
 */
 
+
 /* Round Robin scheduler: uses the nextProcess() function.
 */
+
 void scheduler( ctx_t* ctx ) {
     pid_t new = nextProcess();
     memcpy( &pcb[ current->pid ].ctx, ctx, sizeof( ctx_t ) );
@@ -222,6 +225,8 @@ void clearCursor( ){
 uint8_t clear_bit(uint8_t x, int bit){
   return (x &= ~(1 << bit));
 }
+
+int offsetLettersX = 0, offsetLettersY = 0;
 
 
 /*******RESET*******
@@ -609,6 +614,33 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         pipe[id].full = x;
         break;
       }
+
+      case 0xD : { //0xD => showphil(int x, int y, int id);
+        int x         = ( int )( ctx->gpr[0] );
+        int y         = ( int )( ctx->gpr[1] );
+        int id        = ( int )( ctx->gpr[2] );
+
+
+        for(int letter = 0; letter<16; letter++) {
+          char c = phileat[id][letter];
+          for( int i = 16; i >= 0; i-- ){
+            for( int j = 0; j < 16; j++ ){
+              //print('c');
+              int val = ctoasc(c);
+              int pix = ascii[val][i];
+              if (((pix >> j) & 0x01) == 0) fb[y + i + offsetLettersY*16 ][x + j + offsetLettersX*16] = 0x7FFF;
+              else fb[y + i +  offsetLettersY*16][x + j + offsetLettersX*16] = 0;
+            }
+
+          }
+          offsetLettersX++;
+
+        }
+          offsetLettersY ++;
+          offsetLettersX = 0;
+          break;
+        }
+
 
       default   : { // 0x?? => unknown/unsupported
         break;

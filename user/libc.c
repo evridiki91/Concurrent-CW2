@@ -220,3 +220,14 @@ void changec( int id, int x ){
               : "r0", "r1" );
   return;
 }
+
+void showphil( int x, int y, int id){
+  asm volatile( "mov r0, %1 \n" // assign r0 = x
+                "mov r1, %2 \n" // assign r1 = y
+                "mov r2, %3 \n" // assign r2 = id
+                "svc %0     \n" // make system call SYS_showphil
+              :
+              : "I" (SYS_SHOWPHIL), "r" (x), "r" (y), "r"(id)
+              : "r0", "r1","r2" );
+  return;
+}

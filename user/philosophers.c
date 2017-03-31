@@ -53,6 +53,7 @@ if( phil.status == hungry ){
           writec( phil.ptw,finish ); // Finished eating, inform the waiter
           changec( phil.ptw, 1 );
           print("Philosopher no: "); print_int( phil.id ); print(" has finished eating. \n");
+          showphil(10,10,phil.id);
         }
       }
     }

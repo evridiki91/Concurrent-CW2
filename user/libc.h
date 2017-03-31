@@ -43,6 +43,7 @@ enum request_t {
 #define SYS_GETPID    ( 0xA  )
 #define SYS_ISFULL    ( 0xB  )
 #define SYS_CHANGEC   ( 0xC  )
+#define SYS_SHOWPHIL  ( 0xD  )
 
 
 #define SIG_TERM      ( 0x00 )
@@ -96,5 +97,7 @@ extern int isfull(int id);
 //Make channel full or empty
 extern void changec(int id, int x);
 
+// Print when a philosopher is done in the frame buffer
+extern void showphil(int x, int y, int id);
 
 #endif
