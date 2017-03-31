@@ -114,9 +114,49 @@ void scheduler( ctx_t* ctx ) {
   return;
 }
 
+int ctoasc( char c){
+  int x;
+  x = c;
+  return x;
+}
 
+void printpixels(int asc, int offx, int offy){
+  int val;
+  for(int i = 8; i >= 0; i--){
+    char pix = ascii[asc][i];
+    for(int j = 0; j < 8; j++){
+      val = (pix >> j)& 0x1;
+      if (val != 0) fb[offx + i ][ offy + j ] = 0;
+      else fb[offx + i ][ offy + j ] = 0x7FFF;
+    }
+  }
+}
 
+void resetImage(){
+  for( int i = 0; i < 600; i++ ) {
+    for( int j = 0; j < 800; j++ ) {
+      fb[ i ][ j ] = 0;
+    }
+  }
+}
 
+void mouseCursor(){
+for(int i = 0; i < 16; i++){
+  for( int j = 0; j < 16; j++ ){
+    int val = ( cursor[ i ] >> j ) & 0x1;
+    if ( val == 1 ) fb[ 200 + i ][ 200 + j ] = 0x7FFF;
+    }
+  }
+}
+
+void clickCursor(){
+for(int i = 0; i < 16; i++){
+  for( int j = 0; j < 16; j++ ){
+    int val = ( cursor_click[ i ] >> j ) & 0x1;
+    if ( val == 1 ) fb[ 200 + i ][ 200 + j ] = 0x7FFF;
+    }
+  }
+}
 
 void hilevel_handler_rst( ctx_t* ctx) {
   // Configure the LCD display into 800x600 SVGA @ 36MHz resolution.
@@ -181,12 +221,10 @@ void hilevel_handler_rst( ctx_t* ctx) {
   int_enable_irq();
 
   // Write example red/green/blue test pattern into the frame buffer.
+  resetImage();
 
-for( int i = 0; i < 600; i++ ) {
-  for( int j = 0; j < 800; j++ ) {
-    fb[ i ][ j ] = 0x1F << ( ( i / 200 ) * 5 );
-  }
-}
+clickCursor();
+
 
   /* Initialise PCBs representing processes stemming from execution of
      * the two user programs.  Note in each case that
@@ -278,7 +316,7 @@ void hilevel_handler_irq(ctx_t* ctx) {
   // Step 4: handle the interrupt, then clear (or reset) the source.
   //PS20 - KEYBOARD, PS21 MOUSE
   else if     ( id == GIC_SOURCE_PS20 ) {
-    uint8_t x = PL050_getc( PS20 );       print(" is pressed \n");
+    uint8_t x = PL050_getc( PS20 );
 
     /*PL011_putc( UART0, '0',                      true );
     PL011_putc( UART0, '<',                      true );
@@ -286,21 +324,58 @@ void hilevel_handler_irq(ctx_t* ctx) {
     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
     PL011_putc( UART0, '>',                      true );
     */
-    if ((x >> 7) == 0 ) PL011_putc( UART0, lookup[x], true ); //Shows what is pressed
+    if ((x >> 7) == 0 ) {
+      PL011_putc( UART0, lookup[x], true ); //Shows what is pressed
+      int asc = ctoasc(lookup[x]);
+      print(" is pressed \n");
+      printpixels(asc, 200, 100);
+    }
       else {
         uint8_t newx = clear_bit(x, 7);
         PL011_putc(UART0, lookup[newx] ,true);
         print(" is released \n");
+        resetImage();
+
     }
   }
-  else if( id == GIC_SOURCE_PS21 ) {
-    uint8_t x = PL050_getc( PS21 );
 
+  else if( id == GIC_SOURCE_PS21 ) {
+    int nbytes = 0;
+    uint8_t x = PL050_getc( PS21 );
+/*
     PL011_putc( UART0, '1',                      true );
     PL011_putc( UART0, '<',                      true );
     PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
     PL011_putc( UART0, '>',                      true );
+    */
+ switch (nbytes){
+   case 0 : {
+     uint16_t byte1      = ( uint16_t )( x );
+     uint16_t y_sign_bit = (byte1 >> 5) & 0x1;
+     uint16_t x_sign_bit = (byte1 >> 4) & 0x1;
+     nbytes              = (nbytes + 1) % 2;
+
+     break;
+   }
+
+   case 1 : {
+     uint16_t byte2 = ( uint16_t )( x );
+     uint16_t x_movement = byte2;
+     nbytes              = (nbytes + 1) % 2;
+
+     break;
+   }
+
+   case 2 : {
+     uint16_t byte3 = ( uint16_t )( x );
+     uint16_t y_movement = byte3;
+     nbytes              = (nbytes + 1) % 2;
+
+     break;
+   }
+ }
+
   }
 
 
